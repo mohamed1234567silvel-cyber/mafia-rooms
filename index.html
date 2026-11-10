@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>المبدع محمد | لعبة المافيا</title>
+<style>
+:root{--bg:#0b1020;--panel:#151d33;--line:#293653;--gold:#f4c56a;--text:#f5f7fb;--muted:#aab5ca;--red:#ed6572}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#1b2948,#0b1020 60%);color:var(--text);font-family:Tahoma,Arial,sans-serif;min-height:100vh}
+main{width:min(760px,92%);margin:36px auto}.brand{text-align:center;margin-bottom:25px}.brand h1{font-size:clamp(32px,7vw,52px);margin:0;color:var(--gold)}.brand p{color:var(--muted);margin:8px 0}
+.panel{background:#151d33ed;border:1px solid var(--line);border-radius:20px;padding:22px;margin:14px 0;box-shadow:0 18px 50px #0005}
+h2{margin:0 0 14px;font-size:21px}input{width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);background:#0c1428;color:white;font-size:16px;margin:7px 0 12px}
+button{border:0;border-radius:12px;padding:13px 18px;font-size:16px;font-weight:bold;cursor:pointer;background:var(--gold);color:#17120a;margin:5px 0}button.secondary{background:#293653;color:white}button:disabled{opacity:.45;cursor:not-allowed}
+.actions{display:flex;gap:10px;flex-wrap:wrap}.actions button{flex:1}.muted{color:var(--muted);font-size:14px;line-height:1.7}.hidden{display:none!important}
+.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px}.player{background:#0c1428;border:1px solid var(--line);padding:12px;border-radius:12px}.you{border-color:var(--gold)}
+.code{font-size:28px;letter-spacing:5px;color:var(--gold);font-weight:bold}.status{padding:10px;border-radius:10px;background:#0c1428;color:var(--muted);margin:10px 0}
+.card{border:1px solid #8a6b37;background:linear-gradient(145deg,#293653,#10182c);border-radius:20px;padding:30px;text-align:center;margin:18px auto;max-width:360px;min-height:170px;display:flex;flex-direction:column;justify-content:center}.card .role{font-size:34px;color:var(--gold);font-weight:bold}.card .sub{color:var(--muted);margin-top:12px}
+footer{text-align:center;color:#74819b;font-size:12px;padding:20px}
+</style>
+</head>
+<body><main>
+<header class="brand"><h1>المبدع محمد</h1><p>MAFIA ROOM · وزّع الأدوار بسرّية</p></header>
+<section id="home" class="panel">
+<h2>ابدأ اللعب</h2><label>اسمك داخل اللعبة</label><input id="playerName" maxlength="18" placeholder="اكتب اسمك">
+<div class="actions"><button id="createBtn">إنشاء غرفة</button><button class="secondary" id="showJoinBtn">الانضمام إلى غرفة</button></div>
+<div id="joinBox" class="hidden"><label>رمز الغرفة</label><input id="roomCode" maxlength="5" placeholder="مثال: A7K2Q" style="text-transform:uppercase"><button id="joinBtn">دخول الغرفة</button></div>
+<p class="muted">كل غرفة مخصصة لـ 5 لاعبين. الأدوار: مافيا، دكتور، محقق، مواطن، مواطن.</p>
+</section>
+<section id="room" class="panel hidden">
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div class="muted">رمز الغرفة</div><div id="code" class="code"></div></div><button id="copyBtn" class="secondary">نسخ الرمز</button></div>
+<div id="roomStatus" class="status">بانتظار اللاعبين...</div>
+<h2>اللاعبون <span id="count" class="muted"></span></h2><div id="players" class="players"></div>
+<div id="hostControls" class="hidden"><button id="startBtn" disabled>توزيع البطاقات</button></div>
+<div id="myCardArea" class="hidden"><div class="card"><div class="muted">بطاقتك السرية</div><div id="myRole" class="role">؟</div><div class="sub">لا تعرض هذه البطاقة على اللاعبين الآخرين</div></div></div>
+<p class="muted">ملاحظة: لا يمكن إعادة التوزيع بعد بدء الجولة. أنشئ غرفة جديدة لجولة أخرى.</p>
+<button class="secondary" id="leaveBtn">العودة للرئيسية</button>
+</section>
+<div id="message" class="status hidden"></div>
+<footer>المبدع محمد © لعبة المافيا</footer>
+</main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, set, get, update, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+// 1) استبدل القيم التالية بإعدادات مشروع Firebase الخاص بك.
+const firebaseConfig = {
+  apiKey: "AIzaSyA-u1uM77VLOA3OG2RJ-xYcrw1X1pe6rcQ",
+  authDomain: "al-mobde-mohamed.firebaseapp.com",
+  databaseURL: "https://al-mobde-mohamed-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "al-mobde-mohamed",
+  storageBucket: "al-mobde-mohamed.firebasestorage.app",
+  messagingSenderId: "962713738935",
+  appId: "1:962713738935:web:93ec0a9c4d45d08b5f3732",
+  measurementId: "G-8DEZ1NYDLY"
+};
+const configured = !Object.values(firebaseConfig).some(v => String(v).includes("ضع_"));
+const $ = id => document.getElementById(id);
+let app, auth, db, uid=null, roomCode=null, isHost=false, stopPlayers=null, stopMeta=null, stopRole=null;
+function msg(t){$("message").textContent=t;$("message").classList.remove("hidden")}
+function cleanName(){return $("playerName").value.trim().slice(0,18)}
+function randomCode(){return Math.random().toString(36).slice(2,7).toUpperCase()}
+function showRoom(code){roomCode=code;$("home").classList.add("hidden");$("room").classList.remove("hidden");$("code").textContent=code}
+function stopListeners(){[stopPlayers,stopMeta,stopRole].forEach(f=>{if(f)f()});stopPlayers=stopMeta=stopRole=null}
+async function enter(code,host){
+  const name=cleanName(); if(!name) throw Error("اكتب اسمك أولاً");
+  roomCode=code; isHost=host; showRoom(code);
+  const roomRef=ref(db,`rooms/${code}/meta`);
+  const snap=await get(roomRef); if(!snap.exists()) throw Error("الغرفة غير موجودة");
+  const playersRef=ref(db,`rooms/${code}/players`);
+  const current=await get(playersRef);
+  if(!current.child(uid).exists() && Object.keys(current.val()||{}).length>=5) throw Error("الغرفة مكتملة");
+  await set(ref(db,`rooms/${code}/players/${uid}`),{name,joinedAt:Date.now()});
+  $("hostControls").classList.toggle("hidden",!host);
+  stopListeners();
+  stopMeta=onValue(ref(db,`rooms/${code}/meta`),s=>{
+    const m=s.val()||{}; const started=!!m.started;
+    $("roomStatus").textContent=started?"تم توزيع البطاقات! افتح بطاقتك السرية.":"بانتظار اكتمال 5 لاعبين...";
+    $("startBtn").disabled=!host || started || Number($("count").dataset.n||0)!==5;
+  });
+  stopPlayers=onValue(playersRef,s=>{
+    const p=s.val()||{}, entries=Object.entries(p); $("count").textContent=`(${entries.length}/5)`;$("count").dataset.n=entries.length;
+    $("players").innerHTML=entries.map(([id,v])=>`<div class="player ${id===uid?'you':''}">${escapeHtml(v.name||"لاعب")}${id===uid?' · أنت':''}</div>`).join("");
+    $("startBtn").disabled=!host || entries.length!==5;
+  });
+  stopRole=onValue(ref(db,`rooms/${code}/roles/${uid}`),s=>{
+    if(s.exists()){$("myCardArea").classList.remove("hidden");$("myRole").textContent=s.val().role;}
+  });
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function startGame(){
+  const ps=await get(ref(db,`rooms/${roomCode}/players`));const entries=Object.entries(ps.val()||{});
+  if(entries.length!==5) throw Error("يجب أن يكون عدد اللاعبين 5 بالضبط");
+  const meta=await get(ref(db,`rooms/${roomCode}/meta`));if(meta.val()?.started)throw Error("بدأت الجولة بالفعل");
+  const roles=["مافيا","دكتور","محقق","مواطن","مواطن"];
+  for(let i=roles.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[roles[i],roles[j]]=[roles[j],roles[i]]}
+  const writes={};entries.forEach(([id],i)=>writes[`rooms/${roomCode}/roles/${id}`]={role:roles[i]});
+  writes[`rooms/${roomCode}/meta/started`]=true;
+  await update(ref(db),writes);
+}
+$("showJoinBtn").onclick=()=>$("joinBox").classList.toggle("hidden");
+$("createBtn").onclick=async()=>{try{if(!configured)throw Error("يجب إعداد Firebase أولاً. اتبع ملف README المرفق.");const code=randomCode();await set(ref(db,`rooms/${code}/meta`),{hostUid:uid,started:false});await enter(code,true)}catch(e){msg(e.message)}};
+$("joinBtn").onclick=async()=>{try{if(!configured)throw Error("يجب إعداد Firebase أولاً. اتبع ملف README المرفق.");await enter($("roomCode").value.trim().toUpperCase(),false)}catch(e){msg(e.message)}};
+$("startBtn").onclick=async()=>{try{await startGame()}catch(e){msg(e.message)}};
+$("copyBtn").onclick=async()=>{await navigator.clipboard.writeText(roomCode);msg("تم نسخ رمز الغرفة")};
+$("leaveBtn").onclick=()=>{stopListeners();roomCode=null;$("room").classList.add("hidden");$("home").classList.remove("hidden");$("myCardArea").classList.add("hidden");$("message").classList.add("hidden")};
+if(configured){app=initializeApp(firebaseConfig);auth=getAuth(app);db=getDatabase(app);signInAnonymously(auth).catch(e=>msg("تعذر تسجيل الدخول: "+e.message));onAuthStateChanged(auth,u=>{if(u)uid=u.uid})}
+else { $("createBtn").disabled=true; $("joinBtn").disabled=true; msg("الموقع جاهز للربط، لكن يلزم إدخال إعدادات Firebase أولاً."); }
+</script></body></html>
