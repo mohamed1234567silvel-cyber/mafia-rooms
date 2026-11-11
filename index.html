@@ -52,7 +52,6 @@ footer{text-align:center;color:#74819b;font-size:12px;padding:20px}
 <footer>المبدع محمد © لعبة المافيا</footer>
 </main>
 
-<!-- موسيقى توترية خلفية للعبة -->
 <audio id="bgMusic" loop src="https://actions.google.com/sounds/v1/ambiences/horror_ambience.ogg"></audio>
 
 <script type="module">
@@ -123,14 +122,19 @@ async function enter(code,host){
     } else {
       $("roomStatus").textContent="بانتظار اكتمال 6 لاعبين...";
     }
-    $("startBtn").disabled=!host || m.started || Number($("count").dataset.n||0)!==6;
   });
 
   stopPlayers=onValue(playersRef,s=>{
     const p=s.val()||{}, entries=Object.entries(p); 
-    $("count").textContent=`(${entries.length}/6)`;
-    $("count").dataset.n=entries.length;
+    const count = entries.length;
+    $("count").textContent=`(${count}/6)`;
     $("players").innerHTML=entries.map(([id,v])=>`<div class="player ${id===uid?'you':''}">${escapeHtml(v.name||"لاعب")}${id===uid?' · أنت':''}</div>`).join("");
+    
+    // تفعيل زر البدء مباشرة إذا وصل العدد 6 ولم تبدأ الجولة
+    get(ref(db,`rooms/${code}/meta`)).then(metaSnap => {
+      const started = metaSnap.val()?.started || false;
+      $("startBtn").disabled = !host || started || count !== 6;
+    });
   });
 
   stopRole=onValue(ref(db,`rooms/${code}/roles/${uid}`),s=>{
@@ -296,7 +300,7 @@ $("createBtn").onclick=async()=>{try{if(!configured)throw Error("يجب إعدا
 $("joinBtn").onclick=async()=>{try{if(!configured)throw Error("يجب إعداد Firebase أولاً.");await enter($("roomCode").value.trim().toUpperCase(),false)}catch(e){msg(e.message)}};
 $("startBtn").onclick=async()=>{try{await startGame()}catch(e){msg(e.message)}};
 $("copyBtn").onclick=async()=>{await navigator.clipboard.writeText(roomCode);msg("تم نسخ رمز الغرفة")};
-$("leaveBtn").onclick=()=>{stopListeners();roomCode=null;$("room").classList.add("hidden");$("home").classList.remove("hidden");$("message").classList.add("hidden")};
+$("leaveBtn").onclick=()=>{stopListeners();roomCode=null;$("room").classList.add("hidden");$("home").classList.add("hidden");$("message").classList.add("hidden")};
 
 if(configured){app=initializeApp(firebaseConfig);auth=getAuth(app);db=getDatabase(app);signInAnonymously(auth).catch(e=>msg("تعذر تسجيل الدخول: "+e.message));onAuthStateChanged(auth,u=>{if(u)uid=u.uid})}
 else { $("createBtn").disabled=true; $("joinBtn").disabled=true; msg("الموقع جاهز للربط، لكن يلزم إدخال إعدادات Firebase أولاً."); }
