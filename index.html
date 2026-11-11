@@ -82,14 +82,13 @@ function randomCode(){return Math.random().toString(36).slice(2,7).toUpperCase()
 function showRoom(code){roomCode=code;$("home").classList.add("hidden");$("room").classList.remove("hidden");$("code").textContent=code}
 function stopListeners(){[stopPlayers,stopMeta,stopRole,stopGamePhase].forEach(f=>{if(f)f()});stopPlayers=stopMeta=stopRole=stopGamePhase=null}
 
-// دالة نطق الذكاء الاصطناعي بالعربي
 function speakAI(text, callback){
   if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel(); // إيقاف أي كلام سابق
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ar-SA';
-    utterance.rate = 0.9; // سرعة هادئة ومرعبة
-    utterance.pitch = 0.8; // نبرة عميقة
+    utterance.rate = 0.9;
+    utterance.pitch = 0.8;
     utterance.onend = () => { if(callback) callback(); };
     window.speechSynthesis.speak(utterance);
   } else {
@@ -97,11 +96,12 @@ function speakAI(text, callback){
   }
 }
 
-// تشغيل الموسيقى الخلفية
 function startMusic(){
   const music = $("bgMusic");
-  music.volume = 0.4;
-  music.play().catch(e => console.log("تطلب تفاعل لتشغيل الصوت"));
+  if(music) {
+    music.volume = 0.4;
+    music.play().catch(e => console.log("تطلب تفاعل لتشغيل الصوت"));
+  }
 }
 
 async function enter(code,host){
@@ -141,7 +141,6 @@ async function enter(code,host){
     }
   });
 
-  // الاستماع لمراحل اللعبة الليلية والنهار
   stopGamePhase = onValue(ref(db,`rooms/${code}/gamePhase`), s => {
     const phaseData = s.val();
     if(!phaseData) return;
@@ -151,7 +150,6 @@ async function enter(code,host){
 
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
-// المضيف يبدأ اللعبة ويتحكم بمراحل الذكاء الاصطناعي
 async function startGame(){
   const ps=await get(ref(db,`rooms/${roomCode}/players`));const entries=Object.entries(ps.val()||{});
   if(entries.length!==6) throw Error("يجب أن يكون عدد اللاعبين 6 بالضبط");
@@ -170,29 +168,23 @@ async function startGame(){
   runAIGameFlow(entries);
 }
 
-// تسلسل أحداث الذكاء الاصطناعي للمضيف
 async function runAIGameFlow(entries){
-  // 1. المافيا يقوم
   speakAI("المافيا يقوم.", async () => {
-    await new Promise(r => setTimeout(r, 8000)); // وقت لاختيار المافيا
+    await new Promise(r => setTimeout(r, 8000)); 
     speakAI("المافيا ينزل رأسه.", async () => {
       await new Promise(r => setTimeout(r, 1000));
-      // 2. الدكتور يقوم
-      await update(ref(db), { `rooms/${roomCode}/gamePhase`:{ step: 'doctor_turn', timestamp: Date.now() } });
+      await update(ref(db), { [`rooms/${roomCode}/gamePhase`]: { step: 'doctor_turn', timestamp: Date.now() } });
       speakAI("الدكتور يقوم.", async () => {
-        await new Promise(r => setTimeout(r, 8000)); // وقت لاختيار الدكتور
+        await new Promise(r => setTimeout(r, 8000)); 
         speakAI("الدكتور ينوم.", async () => {
           await new Promise(r => setTimeout(r, 1000));
-          // 3. المحقق يقوم
-          await update(ref(db), { `rooms/${roomCode}/gamePhase`:{ step: 'detective_turn', timestamp: Date.now() } });
+          await update(ref(db), { [`rooms/${roomCode}/gamePhase`]: { step: 'detective_turn', timestamp: Date.now() } });
           speakAI("المحقق يقوم.", async () => {
-            await new Promise(r => setTimeout(r, 8000)); // وقت لاختيار المحقق
+            await new Promise(r => setTimeout(r, 8000)); 
             speakAI("المحقق ينزل رأسه.", async () => {
               await new Promise(r => setTimeout(r, 1000));
-              // 4. الصباح
-              await update(ref(db), { `rooms/${roomCode}/gamePhase`:{ step: 'morning', timestamp: Date.now() } });
+              await update(ref(db), { [`rooms/${roomCode}/gamePhase`]: { step: 'morning', timestamp: Date.now() } });
               
-              // جلب قرارات الليل لمعرفة من مات ومن أُنقذ
               const stateSnap = await get(ref(db, `rooms/${roomCode}/nightActions`));
               const actions = stateSnap.val() || {};
               const mafiaTarget = actions.mafiaTarget || "لا أحد";
@@ -216,7 +208,6 @@ async function runAIGameFlow(entries){
   });
 }
 
-// معالجة واجهات اللاعبين بناءً على مرحلة اللعبة
 async function handleGamePhase(phase){
   const step = phase.step;
   const area = $("nightActionArea");
@@ -229,7 +220,7 @@ async function handleGamePhase(phase){
   const players = psSnap.val() || {};
 
   if(step === 'mafia_turn'){
-    $("nightTitle.textContent") = "منتصف الليل";
+    $("nightTitle").textContent = "منتصف الليل";
     if(myCurrentRole === 'مافيا'){
       prompt.textContent = "اختر ضحيتك (أنت المافيا):";
       Object.entries(players).forEach(([id, p]) => {
@@ -237,7 +228,7 @@ async function handleGamePhase(phase){
         btn.className = "button target-btn mafia-choice";
         btn.textContent = p.name;
         btn.onclick = async () => {
-          await update(ref(db), { `rooms/${roomCode}/nightActions/mafiaTarget` : p.name });
+          await update(ref(db), { [`rooms/${roomCode}/nightActions/mafiaTarget`] : p.name });
           prompt.textContent = `تم اختيار ${p.name} بنجاح. انتظر...`;
           targetsDiv.innerHTML = "";
         };
@@ -255,7 +246,7 @@ async function handleGamePhase(phase){
         btn.className = "button target-btn doctor-choice";
         btn.textContent = p.name + (id === uid ? " (أنت)" : "");
         btn.onclick = async () => {
-          await update(ref(db), { `rooms/${roomCode}/nightActions/doctorTarget` : p.name });
+          await update(ref(db), { [`rooms/${roomCode}/nightActions/doctorTarget`] : p.name });
           prompt.textContent = `تم حماية ${p.name} بنجاح. انتظر...`;
           targetsDiv.innerHTML = "";
         };
@@ -269,12 +260,11 @@ async function handleGamePhase(phase){
     if(myCurrentRole === 'محقق'){
       prompt.textContent = "اختر لاعباً لتكشف هويته هل هو مافيا أم لا:";
       Object.entries(players).forEach(([id, p]) => {
-        if(id === uid) return; // لا تكشف نفسك
+        if(id === uid) return; 
         const btn = document.createElement('button');
         btn.className = "button target-btn";
         btn.textContent = p.name;
         btn.onclick = async () => {
-          // جلب دور اللاعب المستهدف
           const roleSnap = await get(ref(db, `rooms/${roomCode}/roles/${id}` ));
           const targetRole = roleSnap.exists() ? roleSnap.val().role : "";
           
@@ -306,8 +296,9 @@ $("createBtn").onclick=async()=>{try{if(!configured)throw Error("يجب إعدا
 $("joinBtn").onclick=async()=>{try{if(!configured)throw Error("يجب إعداد Firebase أولاً.");await enter($("roomCode").value.trim().toUpperCase(),false)}catch(e){msg(e.message)}};
 $("startBtn").onclick=async()=>{try{await startGame()}catch(e){msg(e.message)}};
 $("copyBtn").onclick=async()=>{await navigator.clipboard.writeText(roomCode);msg("تم نسخ رمز الغرفة")};
-$("leaveBtn").onclick=()=>{stopListeners();roomCode=null;$("room").classList.add("hidden");$("home").classList.add("hidden");$("message").classList.add("hidden")};
+$("leaveBtn").onclick=()=>{stopListeners();roomCode=null;$("room").classList.add("hidden");$("home").classList.remove("hidden");$("message").classList.add("hidden")};
 
 if(configured){app=initializeApp(firebaseConfig);auth=getAuth(app);db=getDatabase(app);signInAnonymously(auth).catch(e=>msg("تعذر تسجيل الدخول: "+e.message));onAuthStateChanged(auth,u=>{if(u)uid=u.uid})}
 else { $("createBtn").disabled=true; $("joinBtn").disabled=true; msg("الموقع جاهز للربط، لكن يلزم إدخال إعدادات Firebase أولاً."); }
 </script></body></html>
+  
