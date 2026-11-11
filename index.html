@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>المبدع محمد | لعبة المافيا الذكية</title>
+<title>المبدع محمد | لعبة المافيا التجريبية</title>
 <style>
 :root{--bg:#0b1020;--panel:#151d33;--line:#293653;--gold:#f4c56a;--text:#f5f7fb;--muted:#aab5ca;--red:#ed6572;--green:#2ecc71}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#1b2948,#0b1020 60%);color:var(--text);font-family:Tahoma,Arial,sans-serif;min-height:100vh}
@@ -22,29 +22,28 @@ footer{text-align:center;color:#74819b;font-size:12px;padding:20px}
 </style>
 </head>
 <body><main>
-<header class="brand"><h1>المبدع محمد</h1><p>MAFIA ROOM · الذكاء الاصطناعي التفاعلي</p></header>
+<header class="brand"><h1>المبدع محمد</h1><p>MAFIA ROOM · نسخة التجربة (2 إلى 6 لاعبين)</p></header>
 <section id="home" class="panel">
 <h2>ابدأ اللعب</h2><label>اسمك داخل اللعبة</label><input id="playerName" maxlength="18" placeholder="اكتب اسمك">
 <div class="actions"><button id="createBtn">إنشاء غرفة</button><button class="secondary" id="showJoinBtn">الانضمام إلى غرفة</button></div>
 <div id="joinBox" class="hidden"><label>رمز الغرفة</label><input id="roomCode" maxlength="5" placeholder="مثال: A7K2Q" style="text-transform:uppercase"><button id="joinBtn">دخول الغرفة</button></div>
-<p class="muted">كل غرفة مخصصة لـ 6 لاعبين (مافيا، دكتور، محقق، 3 مواطنين).</p>
+<p class="muted">وضع التجربة: يمكنك بدء اللعبة بوجود لاعبين أو ثلاثة أو أكثر!</p>
 </section>
 
 <section id="room" class="panel hidden">
 <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div class="muted">رمز الغرفة</div><div id="code" class="code"></div></div><button id="copyBtn" class="secondary">نسخ الرمز</button></div>
-<div id="roomStatus" class="status">بانتظار اللاعبين...</div>
+<div id="roomStatus" class="status">بانتظار انضمام اللاعبين...</div>
 <h2>اللاعبون <span id="count" class="muted"></span></h2><div id="players" class="players"></div>
-<div id="hostControls"><button id="startBtn">توزيع البطاقات وبدء اللعبة</button></div>
+<div id="hostControls"><button id="startBtn">بدء اللعبة (تجربة)</button></div>
 <div id="myCardArea" class="hidden"><div class="card"><div class="muted">بطاقتك السرية</div><div id="myRole" class="role">?</div><div class="sub">لا تعرض هذه البطاقة على اللاعبين الآخرين</div></div></div>
 
-<!-- منطقة تفاعل الليل والذكاء الاصطناعي -->
 <div id="nightActionArea" class="hidden panel" style="border-color:var(--red); background:#1a1018;">
 <h3 id="nightTitle" style="color:var(--gold);">اللعبة قيد التشغيل...</h3>
 <div id="actionPrompt" class="muted">انتظر دورك...</div>
 <div id="actionTargets"></div>
 </div>
 
-<p class="muted" style="margin-top:20px">ملاحظة: تأكد من تفعيل الصوت لسماع حكم الذكاء الاصطناعي والموسيقى التوترية.</p>
+<p class="muted" style="margin-top:20px">ملاحظة: تأكد من تفعيل الصوت لسماع حكم الذكاء الاصطناعي والموسيقى.</p>
 <button class="secondary" id="leaveBtn">العودة للرئيسية</button>
 </section>
 
@@ -99,7 +98,7 @@ function startMusic(){
   const music = $("bgMusic");
   if(music) {
     music.volume = 0.4;
-    music.play().catch(e => console.log("تطلب تفاعل لتشغيل الصوت"));
+    music.play().catch(e => console.log("التشغيل التلقائي للصوت يتطلب تفاعلاً"));
   }
 }
 
@@ -109,7 +108,6 @@ async function enter(code,host){
   const roomRef=ref(db,`rooms/${code}/meta`);
   const snap=await get(roomRef); if(!snap.exists()) throw Error("الغرفة غير موجودة");
   const playersRef=ref(db,`rooms/${code}/players`);
-  const current=await get(playersRef);
   
   await set(ref(db,`rooms/${code}/players/${uid}`),{name,joinedAt:Date.now()});
   stopListeners();
@@ -119,13 +117,13 @@ async function enter(code,host){
     if(m.started){
       $("roomStatus").textContent="الجولة جارية الآن!";
     } else {
-      $("roomStatus").textContent="الغرفة جاهزة، يمكنك البدء!";
+      $("roomStatus").textContent="الغرفة جاهزة، يمكنك البدء بأي وقت!";
     }
   });
 
   stopPlayers=onValue(playersRef,s=>{
     const p=s.val()||{}, entries=Object.entries(p); 
-    $("count").textContent=`(${entries.length}/6)`;
+    $("count").textContent=`(${entries.length} لاعبين)`;
     $("players").innerHTML=entries.map(([id,v])=>`<div class="player ${id===uid?'you':''}">${escapeHtml(v.name||"لاعب")}${id===uid?' · أنت':''}</div>`).join("");
   });
 
@@ -148,13 +146,13 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 
 async function startGame(){
   const ps=await get(ref(db,`rooms/${roomCode}/players`));const entries=Object.entries(ps.val()||{});
-  if(entries.length === 0) throw Error("لا يوجد لاعبين في الغرفة");
+  if(entries.length < 2) throw Error("يلزم لاعبين اثنين على الأقل لبدء التجربة");
   
   const meta=await get(ref(db,`rooms/${roomCode}/meta`));
   if(meta.val()?.started) throw Error("بدأت الجولة بالفعل");
   
-  // توزيع الأدوار تلقائياً حسب عدد اللاعبين الموجودين
-  let roles = ["مافيا", "دكتور", "محقق", "مواطن", "مواطن", "مواطن"];
+  // توزيع الأدوار بمرونة بناءً على عدد اللاعبين الحاليين
+  let roles = ["مافيا", "دكتور", "محقق"];
   while(roles.length < entries.length) roles.push("مواطن");
   
   for(let i=roles.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[roles[i],roles[j]]=[roles[j],roles[i]]}
@@ -241,7 +239,7 @@ async function handleGamePhase(phase){
   } 
   else if(step === 'doctor_turn'){
     if(myCurrentRole === 'دكتور'){
-      prompt.textContent = "اختر شخصاً لتنقذه (يمكنك اختيار نفسك أو غيرك):";
+      prompt.textContent = "اختر شخصاً لتنقذه:";
       Object.entries(players).forEach(([id, p]) => {
         const btn = document.createElement('button');
         btn.className = "button target-btn doctor-choice";
@@ -302,3 +300,4 @@ $("leaveBtn").onclick=()=>{stopListeners();roomCode=null;$("room").classList.add
 if(configured){app=initializeApp(firebaseConfig);auth=getAuth(app);db=getDatabase(app);signInAnonymously(auth).catch(e=>msg("تعذر تسجيل الدخول: "+e.message));onAuthStateChanged(auth,u=>{if(u)uid=u.uid})}
 else { $("createBtn").disabled=true; $("joinBtn").disabled=true; msg("الموقع جاهز للربط، لكن يلزم إدخال إعدادات Firebase أولاً."); }
 </script></body></html>
+  
