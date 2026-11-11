@@ -34,7 +34,7 @@ footer{text-align:center;color:#74819b;font-size:12px;padding:20px}
 <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div class="muted">رمز الغرفة</div><div id="code" class="code"></div></div><button id="copyBtn" class="secondary">نسخ الرمز</button></div>
 <div id="roomStatus" class="status">بانتظار اللاعبين...</div>
 <h2>اللاعبون <span id="count" class="muted"></span></h2><div id="players" class="players"></div>
-<div id="hostControls" class="hidden"><button id="startBtn" disabled>توزيع البطاقات وبدء اللعبة</button></div>
+<div id="hostControls"><button id="startBtn">توزيع البطاقات وبدء اللعبة</button></div>
 <div id="myCardArea" class="hidden"><div class="card"><div class="muted">بطاقتك السرية</div><div id="myRole" class="role">?</div><div class="sub">لا تعرض هذه البطاقة على اللاعبين الآخرين</div></div></div>
 
 <!-- منطقة تفاعل الليل والذكاء الاصطناعي -->
@@ -110,9 +110,8 @@ async function enter(code,host){
   const snap=await get(roomRef); if(!snap.exists()) throw Error("الغرفة غير موجودة");
   const playersRef=ref(db,`rooms/${code}/players`);
   const current=await get(playersRef);
-  if(!current.child(uid).exists() && Object.keys(current.val()||{}).length>=6) throw Error("الغرفة مكتملة");
+  
   await set(ref(db,`rooms/${code}/players/${uid}`),{name,joinedAt:Date.now()});
-  $("hostControls").classList.toggle("hidden",!host);
   stopListeners();
   
   stopMeta=onValue(ref(db,`rooms/${code}/meta`),s=>{
@@ -120,21 +119,14 @@ async function enter(code,host){
     if(m.started){
       $("roomStatus").textContent="الجولة جارية الآن!";
     } else {
-      $("roomStatus").textContent="بانتظار اكتمال 6 لاعبين...";
+      $("roomStatus").textContent="الغرفة جاهزة، يمكنك البدء!";
     }
   });
 
   stopPlayers=onValue(playersRef,s=>{
     const p=s.val()||{}, entries=Object.entries(p); 
-    const count = entries.length;
-    $("count").textContent=`(${count}/6)`;
+    $("count").textContent=`(${entries.length}/6)`;
     $("players").innerHTML=entries.map(([id,v])=>`<div class="player ${id===uid?'you':''}">${escapeHtml(v.name||"لاعب")}${id===uid?' · أنت':''}</div>`).join("");
-    
-    // تفعيل زر البدء مباشرة إذا وصل العدد 6 ولم تبدأ الجولة
-    get(ref(db,`rooms/${code}/meta`)).then(metaSnap => {
-      const started = metaSnap.val()?.started || false;
-      $("startBtn").disabled = !host || started || count !== 6;
-    });
   });
 
   stopRole=onValue(ref(db,`rooms/${code}/roles/${uid}`),s=>{
@@ -156,14 +148,19 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 
 async function startGame(){
   const ps=await get(ref(db,`rooms/${roomCode}/players`));const entries=Object.entries(ps.val()||{});
-  if(entries.length!==6) throw Error("يجب أن يكون عدد اللاعبين 6 بالضبط");
-  const meta=await get(ref(db,`rooms/${roomCode}/meta`));if(meta.val()?.started)throw Error("بدأت الجولة بالفعل");
+  if(entries.length === 0) throw Error("لا يوجد لاعبين في الغرفة");
   
-  const roles=["مافيا","دكتور","محقق","مواطن","مواطن","مواطن"];
+  const meta=await get(ref(db,`rooms/${roomCode}/meta`));
+  if(meta.val()?.started) throw Error("بدأت الجولة بالفعل");
+  
+  // توزيع الأدوار تلقائياً حسب عدد اللاعبين الموجودين
+  let roles = ["مافيا", "دكتور", "محقق", "مواطن", "مواطن", "مواطن"];
+  while(roles.length < entries.length) roles.push("مواطن");
+  
   for(let i=roles.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[roles[i],roles[j]]=[roles[j],roles[i]]}
   
   const writes={};
-  entries.forEach(([id],i)=>writes[`rooms/${roomCode}/roles/${id}`]={role:roles[i]});
+  entries.forEach(([id],i)=>writes[`rooms/${roomCode}/roles/${id}`]={role:roles[i]||"مواطن"});
   writes[`rooms/${roomCode}/meta/started`]=true;
   writes[`rooms/${roomCode}/gamePhase`] = { step: 'mafia_turn', timestamp: Date.now() };
   await update(ref(db),writes);
@@ -300,9 +297,8 @@ $("createBtn").onclick=async()=>{try{if(!configured)throw Error("يجب إعدا
 $("joinBtn").onclick=async()=>{try{if(!configured)throw Error("يجب إعداد Firebase أولاً.");await enter($("roomCode").value.trim().toUpperCase(),false)}catch(e){msg(e.message)}};
 $("startBtn").onclick=async()=>{try{await startGame()}catch(e){msg(e.message)}};
 $("copyBtn").onclick=async()=>{await navigator.clipboard.writeText(roomCode);msg("تم نسخ رمز الغرفة")};
-$("leaveBtn").onclick=()=>{stopListeners();roomCode=null;$("room").classList.add("hidden");$("home").classList.add("hidden");$("message").classList.add("hidden")};
+$("leaveBtn").onclick=()=>{stopListeners();roomCode=null;$("room").classList.add("hidden");$("home").classList.remove("hidden");$("message").classList.add("hidden")};
 
 if(configured){app=initializeApp(firebaseConfig);auth=getAuth(app);db=getDatabase(app);signInAnonymously(auth).catch(e=>msg("تعذر تسجيل الدخول: "+e.message));onAuthStateChanged(auth,u=>{if(u)uid=u.uid})}
 else { $("createBtn").disabled=true; $("joinBtn").disabled=true; msg("الموقع جاهز للربط، لكن يلزم إدخال إعدادات Firebase أولاً."); }
 </script></body></html>
-  
