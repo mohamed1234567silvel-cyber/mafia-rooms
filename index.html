@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>المبدع محمد | لعبة المافيا التجريبية</title>
+<title>المبدع محمد | لعبة المافيا الكاملة</title>
 <style>
 :root{--bg:#0b1020;--panel:#151d33;--line:#293653;--gold:#f4c56a;--text:#f5f7fb;--muted:#aab5ca;--red:#ed6572;--green:#2ecc71}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#1b2948,#0b1020 60%);color:var(--text);font-family:Tahoma,Arial,sans-serif;min-height:100vh}
@@ -18,32 +18,42 @@ button{border:0;border-radius:12px;padding:13px 18px;font-size:16px;font-weight:
 .target-btn.mafia-choice:hover{background:var(--red)}
 .target-btn.doctor-choice:hover{background:var(--green)}
 .result-box{padding:15px;border-radius:12px;margin-top:10px;text-align:center;font-weight:bold}
+@keyframes pulseRed { 0% { border-color: var(--line); } 50% { border-color: var(--red); box-shadow: 0 0 20px var(--red); } 100% { border-color: var(--line); } }
+.night-mode { animation: pulseRed 3s infinite; }
 footer{text-align:center;color:#74819b;font-size:12px;padding:20px}
 </style>
 </head>
 <body><main>
-<header class="brand"><h1>المبدع محمد</h1><p>MAFIA ROOM · نسخة التجربة (2 إلى 6 لاعبين)</p></header>
+<header class="brand"><h1>المبدع محمد</h1><p>MAFIA ROOM · النسخة التفاعلية الكاملة</p></header>
 <section id="home" class="panel">
 <h2>ابدأ اللعب</h2><label>اسمك داخل اللعبة</label><input id="playerName" maxlength="18" placeholder="اكتب اسمك">
 <div class="actions"><button id="createBtn">إنشاء غرفة</button><button class="secondary" id="showJoinBtn">الانضمام إلى غرفة</button></div>
 <div id="joinBox" class="hidden"><label>رمز الغرفة</label><input id="roomCode" maxlength="5" placeholder="مثال: A7K2Q" style="text-transform:uppercase"><button id="joinBtn">دخول الغرفة</button></div>
-<p class="muted">وضع التجربة: يمكنك بدء اللعبة بوجود لاعبين أو ثلاثة أو أكثر!</p>
+<p class="muted">النسخة المتكاملة: ذكاء اصطناعي، مراحل ليلية، تصويت نهارى، ونهاية الجولة!</p>
 </section>
 
-<section id="room" class="panel hidden">
+<section id="room" class="panel hidden" id="roomPanel">
 <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div class="muted">رمز الغرفة</div><div id="code" class="code"></div></div><button id="copyBtn" class="secondary">نسخ الرمز</button></div>
 <div id="roomStatus" class="status">بانتظار انضمام اللاعبين...</div>
 <h2>اللاعبون <span id="count" class="muted"></span></h2><div id="players" class="players"></div>
-<div id="hostControls"><button id="startBtn">بدء اللعبة (تجربة)</button></div>
+<div id="hostControls"><button id="startBtn">بدء الجولة بالكامل</button></div>
 <div id="myCardArea" class="hidden"><div class="card"><div class="muted">بطاقتك السرية</div><div id="myRole" class="role">?</div><div class="sub">لا تعرض هذه البطاقة على اللاعبين الآخرين</div></div></div>
 
+<!-- تفاعل الليل والنهار والتصويت -->
 <div id="nightActionArea" class="hidden panel" style="border-color:var(--red); background:#1a1018;">
-<h3 id="nightTitle" style="color:var(--gold);">اللعبة قيد التشغيل...</h3>
+<h3 id="nightTitle" style="color:var(--gold);">منتصف الليل...</h3>
 <div id="actionPrompt" class="muted">انتظر دورك...</div>
 <div id="actionTargets"></div>
 </div>
 
-<p class="muted" style="margin-top:20px">ملاحظة: تأكد من تفعيل الصوت لسماع حكم الذكاء الاصطناعي والموسيقى.</p>
+<!-- شاشة نهاية الجولة -->
+<div id="gameOverArea" class="hidden panel" style="border-color:var(--gold); text-align:center;">
+<h2 style="color:var(--gold);">نتيجة الجولة</h2>
+<div id="winnerText" class="role" style="font-size:26px; margin:15px 0;"></div>
+<button id="restartBtn" class="secondary">العودة للرئيسية</button>
+</div>
+
+<p class="muted" style="margin-top:20px">ملاحظة: تفعيل الصوت ضروري لسماع حكم الذكاء الاصطناعي.</p>
 <button class="secondary" id="leaveBtn">العودة للرئيسية</button>
 </section>
 
@@ -97,8 +107,8 @@ function speakAI(text, callback){
 function startMusic(){
   const music = $("bgMusic");
   if(music) {
-    music.volume = 0.4;
-    music.play().catch(e => console.log("التشغيل التلقائي للصوت يتطلب تفاعلاً"));
+    music.volume = 0.35;
+    music.play().catch(e => console.log("الصوت يتطلب تفاعل"));
   }
 }
 
@@ -117,7 +127,7 @@ async function enter(code,host){
     if(m.started){
       $("roomStatus").textContent="الجولة جارية الآن!";
     } else {
-      $("roomStatus").textContent="الغرفة جاهزة، يمكنك البدء بأي وقت!";
+      $("roomStatus").textContent="الغرفة جاهزة، يمكنك بدء الجولة!";
     }
   });
 
@@ -146,12 +156,11 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 
 async function startGame(){
   const ps=await get(ref(db,`rooms/${roomCode}/players`));const entries=Object.entries(ps.val()||{});
-  if(entries.length < 2) throw Error("يلزم لاعبين اثنين على الأقل لبدء التجربة");
+  if(entries.length < 2) throw Error("يلزم لاعبين على الأقل للبدء");
   
   const meta=await get(ref(db,`rooms/${roomCode}/meta`));
   if(meta.val()?.started) throw Error("بدأت الجولة بالفعل");
   
-  // توزيع الأدوار بمرونة بناءً على عدد اللاعبين الحاليين
   let roles = ["مافيا", "دكتور", "محقق"];
   while(roles.length < entries.length) roles.push("مواطن");
   
@@ -164,26 +173,30 @@ async function startGame(){
   await update(ref(db),writes);
   
   startMusic();
-  runAIGameFlow(entries);
+  runAIGameFlow();
 }
 
-async function runAIGameFlow(entries){
+// تسلسل أحداث الذكاء الاصطناعي (ليل ➔ تصويت نهارى ➔ نهاية)
+async function runAIGameFlow(){
+  // 1. دور المافيا
   speakAI("المافيا يقوم.", async () => {
-    await new Promise(r => setTimeout(r, 8000)); 
+    await new Promise(r => setTimeout(r, 7000)); 
     speakAI("المافيا ينزل رأسه.", async () => {
       await new Promise(r => setTimeout(r, 1000));
+      // 2. دور الدكتور
       await update(ref(db), { [`rooms/${roomCode}/gamePhase`]: { step: 'doctor_turn', timestamp: Date.now() } });
       speakAI("الدكتور يقوم.", async () => {
-        await new Promise(r => setTimeout(r, 8000)); 
+        await new Promise(r => setTimeout(r, 7000)); 
         speakAI("الدكتور ينوم.", async () => {
           await new Promise(r => setTimeout(r, 1000));
+          // 3. دور المحقق
           await update(ref(db), { [`rooms/${roomCode}/gamePhase`]: { step: 'detective_turn', timestamp: Date.now() } });
           speakAI("المحقق يقوم.", async () => {
-            await new Promise(r => setTimeout(r, 8000)); 
+            await new Promise(r => setTimeout(r, 7000)); 
             speakAI("المحقق ينزل رأسه.", async () => {
               await new Promise(r => setTimeout(r, 1000));
-              await update(ref(db), { [`rooms/${roomCode}/gamePhase`]: { step: 'morning', timestamp: Date.now() } });
               
+              // 4. الصباح ونتيجة الليل
               const stateSnap = await get(ref(db, `rooms/${roomCode}/nightActions`));
               const actions = stateSnap.val() || {};
               const mafiaTarget = actions.mafiaTarget || "لا أحد";
@@ -191,14 +204,21 @@ async function runAIGameFlow(entries){
               
               let morningMsg = "استيقظوا جميعاً.";
               if(mafiaTarget === doctorTarget && mafiaTarget !== "لا أحد"){
-                morningMsg += ` لقد استهدف المافيا ${mafiaTarget}، لكن الطبيب أنقذه ولم يمت أحد!`;
+                morningMsg += ` استهدف المافيا ${mafiaTarget}، لكن الطبيب أنقذه ولم يمت أحد!`;
               } else if(mafiaTarget !== "لا أحد"){
-                morningMsg += ` لقد مات اللاعب ${mafiaTarget} بسلاح المافيا!`;
+                morningMsg += ` مات اللاعب ${mafiaTarget} بسلاح المافيا!`;
               } else {
                 morningMsg += ` ليلة هادئة ولم يمت أحد.`;
               }
               
-              speakAI(morningMsg);
+              await update(ref(db), { [`rooms/${roomCode}/gamePhase`]: { step: 'morning_discussion', message: morningMsg, timestamp: Date.now() } });
+              speakAI(morningMsg, async () => {
+                await new Promise(r => setTimeout(r, 4000));
+                // 5. مرحلة التصويت النهاري
+                speakAI("الآن يبدأ وقت النقاش والتصويت لاختيار المشتبه به.", async () => {
+                  await update(ref(db), { [`rooms/${roomCode}/gamePhase`]: { step: 'voting', timestamp: Date.now() } });
+                });
+              });
             });
           });
         });
@@ -214,50 +234,53 @@ async function handleGamePhase(phase){
   const targetsDiv = $("actionTargets");
   area.classList.remove("hidden");
   targetsDiv.innerHTML = "";
+  document.body.classList.add("night-mode");
 
   const psSnap = await get(ref(db, `rooms/${roomCode}/players`));
   const players = psSnap.val() || {};
 
   if(step === 'mafia_turn'){
-    $("nightTitle").textContent = "منتصف الليل";
+    $("nightTitle").textContent = "منتصف الليل (المافيا)";
     if(myCurrentRole === 'مافيا'){
-      prompt.textContent = "اختر ضحيتك (أنت المافيا):";
+      prompt.textContent = "اختر ضحيتك السرية:";
       Object.entries(players).forEach(([id, p]) => {
         const btn = document.createElement('button');
         btn.className = "button target-btn mafia-choice";
         btn.textContent = p.name;
         btn.onclick = async () => {
           await update(ref(db), { [`rooms/${roomCode}/nightActions/mafiaTarget`] : p.name });
-          prompt.textContent = `تم اختيار ${p.name} بنجاح. انتظر...`;
+          prompt.textContent = `تم اختيار ${p.name}. انتظر...`;
           targetsDiv.innerHTML = "";
         };
         targetsDiv.appendChild(btn);
       });
     } else {
-      prompt.textContent = "المافيا يختار ضحيته الآن... نَم بهدوء.";
+      prompt.textContent = "المافيا يتحرك في الظلام... نَم بهدوء.";
     }
   } 
   else if(step === 'doctor_turn'){
+    $("nightTitle").textContent = "منتصف الليل (الدكتور)";
     if(myCurrentRole === 'دكتور'){
-      prompt.textContent = "اختر شخصاً لتنقذه:";
+      prompt.textContent = "اختر من تحميه هذه الليلة:";
       Object.entries(players).forEach(([id, p]) => {
         const btn = document.createElement('button');
         btn.className = "button target-btn doctor-choice";
         btn.textContent = p.name + (id === uid ? " (أنت)" : "");
         btn.onclick = async () => {
           await update(ref(db), { [`rooms/${roomCode}/nightActions/doctorTarget`] : p.name });
-          prompt.textContent = `تم حماية ${p.name} بنجاح. انتظر...`;
+          prompt.textContent = `تم حماية ${p.name}. انتظر...`;
           targetsDiv.innerHTML = "";
         };
         targetsDiv.appendChild(btn);
       });
     } else {
-      prompt.textContent = "الدكتور يفحص ويحمي... نَم بهدوء.";
+      prompt.textContent = "الطبيب يعالج وينقذ... نَم بهدوء.";
     }
   }
   else if(step === 'detective_turn'){
+    $("nightTitle").textContent = "منتصف الليل (المحقق)";
     if(myCurrentRole === 'محقق'){
-      prompt.textContent = "اختر لاعباً لتكشف هويته هل هو مافيا أم لا:";
+      prompt.textContent = "اختر لاعباً لكشف حقيقته:";
       Object.entries(players).forEach(([id, p]) => {
         if(id === uid) return; 
         const btn = document.createElement('button');
@@ -272,21 +295,39 @@ async function handleGamePhase(phase){
           resultBox.className = "result-box";
           if(targetRole === 'مافيا'){
             resultBox.style.background = "var(--green)";
-            resultBox.textContent = `${p.name} هو مافيا! (لون أخضر)`;
+            resultBox.textContent = `${p.name} هو مافيا! (أخضر)`;
           } else {
             resultBox.style.background = "var(--red)";
-            resultBox.textContent = `${p.name} ليس مافيا! (لون أحمر)`;
+            resultBox.textContent = `${p.name} ليس مافيا! (أحمر)`;
           }
           targetsDiv.appendChild(resultBox);
         };
         targetsDiv.appendChild(btn);
       });
     } else {
-      prompt.textContent = "المحقق يبحث عن الحقيقة... نَم بهدوء.";
+      prompt.textContent = "المحقق يبحث في الأدلة... نَم بهدوء.";
     }
   }
-  else if(step === 'morning'){
-    area.classList.add("hidden");
+  else if(step === 'morning_discussion'){
+    $("nightTitle").textContent = "صباح اليوم الجديد";
+    prompt.textContent = phase.message || "استيقظوا جميعاً.";
+  }
+  else if(step === 'voting'){
+    $("nightTitle").textContent = "مرحلة التصويت العام";
+    prompt.textContent = "صوت على الشخص المشتبه به لطرده:";
+    Object.entries(players).forEach(([id, p]) => {
+      const btn = document.createElement('button');
+      btn.className = "button target-btn";
+      btn.textContent = `تصويت ضد: ${p.name}`;
+      btn.onclick = async () => {
+        document.body.classList.remove("night-mode");
+        area.classList.add("hidden");
+        $("gameOverArea").classList.remove("hidden");
+        $("winnerText").textContent = `تم التصويت وطرد ${p.name}! انتهت الجولة التجريبية.`;
+        speakAI(`تم طرد اللاعب ${p.name} بنجاح.`);
+      };
+      targetsDiv.appendChild(btn);
+    });
   }
 }
 
@@ -295,7 +336,7 @@ $("createBtn").onclick=async()=>{try{if(!configured)throw Error("يجب إعدا
 $("joinBtn").onclick=async()=>{try{if(!configured)throw Error("يجب إعداد Firebase أولاً.");await enter($("roomCode").value.trim().toUpperCase(),false)}catch(e){msg(e.message)}};
 $("startBtn").onclick=async()=>{try{await startGame()}catch(e){msg(e.message)}};
 $("copyBtn").onclick=async()=>{await navigator.clipboard.writeText(roomCode);msg("تم نسخ رمز الغرفة")};
-$("leaveBtn").onclick=()=>{stopListeners();roomCode=null;$("room").classList.add("hidden");$("home").classList.remove("hidden");$("message").classList.add("hidden")};
+$("restartBtn").onclick=$("leaveBtn").onclick=()=>{stopListeners();roomCode=null;$("room").classList.add("hidden");$("home").classList.remove("hidden");$("gameOverArea").classList.add("hidden");$("nightActionArea").classList.add("hidden");$("message").classList.add("hidden");document.body.classList.remove("night-mode");};
 
 if(configured){app=initializeApp(firebaseConfig);auth=getAuth(app);db=getDatabase(app);signInAnonymously(auth).catch(e=>msg("تعذر تسجيل الدخول: "+e.message));onAuthStateChanged(auth,u=>{if(u)uid=u.uid})}
 else { $("createBtn").disabled=true; $("joinBtn").disabled=true; msg("الموقع جاهز للربط، لكن يلزم إدخال إعدادات Firebase أولاً."); }
